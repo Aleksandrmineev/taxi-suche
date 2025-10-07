@@ -212,7 +212,8 @@
       dialog::backdrop {
         background: rgba(0, 0, 0, 0.5);
       }
-      dialog input {
+      dialog input,
+      dialog textarea {
         width: 100%;
         margin: 8px 0 16px;
         padding: 8px;
@@ -240,6 +241,59 @@
       .btn-cancel {
         background: #444;
         color: #fff;
+      }
+
+      /* Отключаем авто-зум iOS: шрифт >= 16px для форм в модалке */
+      dialog input,
+      dialog textarea {
+        font: 600 18px/1.3 system-ui; /* можно 20px для полного совпадения с #q */
+      }
+
+      /* Твоя стилизация — оставил и дополнил */
+      dialog input,
+      dialog textarea {
+        width: 100%;
+        margin: 8px 0 16px;
+        padding: 10px 12px; /* чуть удобнее под палец */
+        border-radius: 8px; /* чуток больше радиус для единообразия */
+        border: 1px solid #1b2738;
+        background: #121821;
+        color: var(--text);
+        outline: none;
+      }
+
+      dialog input:focus,
+      dialog textarea:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 4px rgba(77, 163, 255, 0.15);
+      }
+
+      /* Сам диалог — адаптив и прокрутка внутри при маленьких экранах */
+      dialog {
+        background: #0e141c;
+        border: 1px solid #1b2738;
+        border-radius: 12px;
+        padding: 20px;
+        max-width: 420px;
+        width: clamp(280px, 90vw, 420px);
+        max-height: 90dvh;
+        overflow: auto;
+      }
+
+      /* На iOS дополнительно форсируем 18px на интерактивных элементах */
+      @supports (-webkit-touch-callout: none) {
+        input,
+        select,
+        textarea,
+        button {
+          font-size: 18px;
+        }
+      }
+
+      /* Ровные скроллбары в textarea (не обязательно) */
+      dialog textarea {
+        resize: vertical;
+        min-height: 84px; /* близко к 3 строкам при 18px */
       }
     </style>
   </head>
@@ -287,8 +341,20 @@
     <!-- Modal Add New -->
     <dialog id="dlg">
       <h3>Neuer Auftrag</h3>
-      <input id="newPhone" placeholder="Telefonnummer" />
-      <input id="newAddr" placeholder="Adresse" />
+
+      <!-- Только цифры: digits-only клавиатура на iOS/Android -->
+      <input
+        id="newPhone"
+        type="text"
+        inputmode="numeric"
+        pattern="[0-9]*"
+        autocomplete="tel"
+        placeholder="Telefonnummer"
+      />
+
+      <!-- Адрес на 3 строки -->
+      <textarea id="newAddr" rows="3" placeholder="Adresse"></textarea>
+
       <div class="modal-buttons">
         <button class="btn btn-cancel" id="cancelAdd">Abbrechen</button>
         <button class="btn btn-save" id="saveAdd">Speichern</button>
@@ -425,7 +491,7 @@
         let recents = ls.get("recentSearches", []);
         if (!recents.includes(digits)) {
           recents.unshift(digits);
-          if (recents.length > 5) recents.pop();
+          if (recents.length > 10) recents.pop();
           ls.set("recentSearches", recents);
         }
         renderRecents();
