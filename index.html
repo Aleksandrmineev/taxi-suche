@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bestell-Suche</title>
+    <style>
+      :root {
+        --bg: #0b0f14;
+        --card: #121821;
+        --text: #e6eef7;
+        --muted: #a8b3c5;
+        --accent: #4da3ff;
+        --green: #35d07f;
+        --radius: 16px;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 500 16px/1.45 system-ui;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+      .card {
+        width: min(820px, 100%);
+        background: var(--card);
+        border-radius: var(--radius);
+        padding: 50px 24px 24px;
+        position: relative;
+      }
+      h1 {
+        margin: 0 0 12px;
+        text-align: center;
+      }
+      .btn-add {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 10;
+
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+
+        font-size: 17px;
+        font-weight: 600;
+        padding: 10px 18px;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+        transition: transform 0.15s ease, filter 0.15s ease;
+      }
+      .btn-add:hover {
+        filter: brightness(1.1);
+        transform: translateY(-2px);
+      }
+      .btn-add:active {
+        transform: translateY(0);
+      }
+
+      .search {
+        display: grid;
+        gap: 12px;
+        justify-items: center;
+        margin: 10px 0 18px;
+        width: min(520px, 100%);
+        margin-inline: auto;
+      }
+      .input-wrap {
+        position: relative;
+        width: 100%;
+      }
+      #q {
+        width: 100%;
+        font: 600 20px/1.2 system-ui;
+        color: var(--text);
+        text-align: center;
+        background: #0e141c;
+        border: 1px solid #1b2738;
+        border-radius: 12px;
+        padding: 12px 48px 12px 14px;
+        outline: none;
+      }
+      #q:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 4px rgba(77, 163, 255, 0.15);
+      }
+      .clear-btn {
+        position: absolute;
+        inset-inline-end: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        display: grid;
+        place-items: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        border: 1px solid #1b2738;
+        background: #0e141c;
+        cursor: pointer;
+        padding: 0;
+      }
+      .clear-btn svg {
+        width: 16px;
+        height: 16px;
+        opacity: 0.8;
+        color: var(--text);
+        stroke: currentColor;
+        pointer-events: none;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 10px;
+      }
+      li {
+        border: 1px solid #1b2738;
+        border-radius: 12px;
+        padding: 12px 14px;
+        cursor: pointer;
+        transition: background 0.12s ease, transform 0.05s ease;
+      }
+      li:hover {
+        background: #0f1620;
+      }
+      li:active {
+        transform: scale(0.99);
+      }
+      li.copied {
+        color: var(--green);
+        border-color: rgba(53, 208, 127, 0.5);
+        background: rgba(53, 208, 127, 0.06);
+      }
+      .row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .row small {
+        color: var(--muted);
+      }
+      .addr {
+        opacity: 0.95;
+      }
+      mark {
+        background: none;
+        color: var(--accent);
+        font-weight: 700;
+      }
+      .toast {
+        position: fixed;
+        background: #0e141c;
+        border: 1px solid #1b2738;
+        color: #e6eef7;
+        padding: 8px 10px;
+        border-radius: 10px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.15s ease;
+        transform: translate(-50%, -120%);
+        font-size: 14px;
+      }
+      .toast.show {
+        opacity: 1;
+      }
+      .recent {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: center;
+        margin-bottom: 12px;
+      }
+      .recent button {
+        background: #1b2738;
+        color: var(--muted);
+        border: 0;
+        border-radius: 6px;
+        padding: 4px 10px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      .recent button:hover {
+        color: var(--text);
+      }
+      /* modal */
+      dialog {
+        background: #0e141c;
+        border: 1px solid #1b2738;
+        border-radius: 12px;
+        padding: 20px;
+        max-width: 400px;
+        width: 90%;
+        color: var(--text);
+      }
+      dialog::backdrop {
+        background: rgba(0, 0, 0, 0.5);
+      }
+      dialog input {
+        width: 100%;
+        margin: 8px 0 16px;
+        padding: 8px;
+        border-radius: 6px;
+        border: 1px solid #1b2738;
+        background: #121821;
+        color: var(--text);
+      }
+      .modal-buttons {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+      }
+      .btn {
+        padding: 6px 12px;
+        border: 0;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      .btn-save {
+        background: var(--green);
+        color: #fff;
+      }
+      .btn-cancel {
+        background: #444;
+        color: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1>Suche nach Telefon</h1>
+      <button class="btn-add" id="btnAdd">+ Neuer Auftrag</button>
+
+      <div class="search">
+        <div class="input-wrap">
+          <input
+            id="q"
+            placeholder="Nur Ziffern eingeben…"
+            inputmode="numeric"
+            pattern="[0-9]*"
+          />
+          <button
+            id="clear"
+            class="clear-btn"
+            aria-label="Eingabe löschen"
+            type="button"
+          >
+            <svg viewBox="0 0 24 24">
+              <path
+                d="M18 6L6 18M6 6l12 12"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+            </svg>
+          </button>
+        </div>
+        <div class="recent" id="recent"></div>
+        <p class="muted" id="hint">
+          Geben Sie einige Ziffern der Telefonnummer ein.
+        </p>
+      </div>
+
+      <ul id="list"></ul>
+    </main>
+
+    <div id="toast" class="toast">Kopiert</div>
+
+    <!-- Modal Add New -->
+    <dialog id="dlg">
+      <h3>Neuer Auftrag</h3>
+      <input id="newPhone" placeholder="Telefonnummer" />
+      <input id="newAddr" placeholder="Adresse" />
+      <div class="modal-buttons">
+        <button class="btn btn-cancel" id="cancelAdd">Abbrechen</button>
+        <button class="btn btn-save" id="saveAdd">Speichern</button>
+      </div>
+    </dialog>
+
+    <script>
+      const listEl = document.getElementById("list");
+      const q = document.getElementById("q");
+      const hint = document.getElementById("hint");
+      const clearBtn = document.getElementById("clear");
+      const toast = document.getElementById("toast");
+      const recentEl = document.getElementById("recent");
+      const dlg = document.getElementById("dlg");
+      const newPhone = document.getElementById("newPhone");
+      const newAddr = document.getElementById("newAddr");
+
+      let data = [];
+      let lastTap = 0;
+
+      const normalizeDigits = (s) => (s || "").replace(/\D+/g, "");
+      const ls = {
+        get(key, def) {
+          try {
+            return JSON.parse(localStorage.getItem(key)) || def;
+          } catch {
+            return def;
+          }
+        },
+        set(key, val) {
+          localStorage.setItem(key, JSON.stringify(val));
+        },
+      };
+
+      function safeDateStr(iso) {
+        if (!iso) return "";
+        const d = new Date(iso);
+        return isNaN(d) ? "" : d.toLocaleString("de-AT");
+      }
+
+      function showToastAt(x, y, text = "Kopiert") {
+        toast.textContent = text;
+        toast.style.left = x + "px";
+        toast.style.top = y + "px";
+        toast.classList.add("show");
+        clearTimeout(showToastAt._t);
+        showToastAt._t = setTimeout(() => toast.classList.remove("show"), 900);
+      }
+      function getEventXY(evt) {
+        if (evt.touches && evt.touches[0])
+          return { x: evt.touches[0].clientX, y: evt.touches[0].clientY };
+        if (evt.changedTouches && evt.changedTouches[0])
+          return {
+            x: evt.changedTouches[0].clientX,
+            y: evt.changedTouches[0].clientY,
+          };
+        return { x: evt.clientX, y: evt.clientY };
+      }
+      async function copyToClipboard(text) {
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+        }
+      }
+
+      function highlightDigits(phone, digits) {
+        if (!digits) return phone;
+        const re = new RegExp(`(${digits})`, "g");
+        return phone.replace(re, "<mark>$1</mark>");
+      }
+
+      function render(items) {
+        listEl.innerHTML = "";
+        for (const item of items) {
+          const li = document.createElement("li");
+          const phone = item.phone_e164 || item.phone_raw || "";
+          const digits = normalizeDigits(q.value);
+          const phoneHTML = highlightDigits(phone, digits);
+          const dateStr = safeDateStr(item.timestamp_iso);
+          const address = item.address || "";
+          li.innerHTML = `
+          <div class="row"><strong>${phoneHTML}</strong> ${
+            dateStr ? `<small>${dateStr}</small>` : ""
+          }</div>
+          <div class="addr">${address}</div>`;
+          li.addEventListener("click", (ev) => {
+            const line = address ? `${phone} ${address}` : `${phone}`;
+            copyToClipboard(line.trim());
+            li.classList.add("copied");
+            setTimeout(() => li.classList.remove("copied"), 1200);
+            const { x, y } = getEventXY(ev);
+            showToastAt(x, y, "Kopiert");
+          });
+          listEl.appendChild(li);
+        }
+      }
+
+      async function load() {
+        try {
+          const res = await fetch("data.json", { cache: "no-store" });
+          data = await res.json();
+          const extra = ls.get("customOrders", []);
+          data = data.concat(extra);
+          data.sort((a, b) => {
+            const da = a.timestamp_iso
+              ? new Date(a.timestamp_iso).getTime()
+              : -Infinity;
+            const db = b.timestamp_iso
+              ? new Date(b.timestamp_iso).getTime()
+              : -Infinity;
+            return db - da;
+          });
+          render([]);
+          q.focus(); // автофокус
+        } catch (e) {
+          hint.textContent = "Fehler beim Laden (" + e.message + ")";
+        }
+        renderRecents();
+      }
+
+      function update() {
+        const digits = normalizeDigits(q.value);
+        if (!digits) {
+          render([]);
+          hint.textContent = "Geben Sie einige Ziffern ein.";
+          return;
+        }
+        let recents = ls.get("recentSearches", []);
+        if (!recents.includes(digits)) {
+          recents.unshift(digits);
+          if (recents.length > 5) recents.pop();
+          ls.set("recentSearches", recents);
+        }
+        renderRecents();
+        const out = [];
+        for (const r of data) {
+          const phoneDigits =
+            r.phone_digits ||
+            normalizeDigits(r.phone_raw || r.phone_e164 || "");
+          if (phoneDigits.includes(digits)) out.push(r);
+          if (out.length >= 50) break;
+        }
+        render(out.slice(0, 10));
+        hint.textContent = out.length
+          ? `Gefunden: ${out.length} (zeige 10)`
+          : "Keine Treffer";
+      }
+
+      function renderRecents() {
+        const rec = ls.get("recentSearches", []);
+        recentEl.innerHTML = "";
+        for (const d of rec) {
+          const b = document.createElement("button");
+          b.textContent = d;
+          b.addEventListener("click", () => {
+            q.value = d;
+            update();
+          });
+          recentEl.appendChild(b);
+        }
+      }
+
+      // двойной клик очищает
+      q.addEventListener("click", () => {
+        const now = Date.now();
+        if (now - lastTap < 400) {
+          q.value = "";
+          update();
+          setTimeout(() => q.focus(), 0);
+        } else {
+          q.select();
+        }
+        lastTap = now;
+      });
+      clearBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        q.value = "";
+        update();
+        setTimeout(() => q.focus(), 0);
+      });
+      q.addEventListener("input", update);
+
+      // modal add new
+      document.getElementById("btnAdd").addEventListener("click", () => {
+        dlg.showModal();
+        newPhone.value = "";
+        newAddr.value = "";
+        newPhone.focus();
+      });
+      document
+        .getElementById("cancelAdd")
+        .addEventListener("click", () => dlg.close());
+      document.getElementById("saveAdd").addEventListener("click", () => {
+        const ph = newPhone.value.trim(),
+          addr = newAddr.value.trim();
+        if (!ph || !addr) {
+          alert("Telefon und Adresse eingeben");
+          return;
+        }
+        const now = new Date();
+        const rec = {
+          timestamp_iso: now.toISOString(),
+          author: "user",
+          phone_raw: ph,
+          phone_digits: normalizeDigits(ph),
+          phone_e164: ph,
+          address: addr,
+          source_line: -1,
+        };
+        const all = ls.get("customOrders", []);
+        all.push(rec);
+        ls.set("customOrders", all);
+        data.unshift(rec);
+        dlg.close();
+        update();
+        showToastAt(window.innerWidth / 2, 40, "Gespeichert");
+      });
+
+      load();
+    </script>
+  </body>
+</html>
