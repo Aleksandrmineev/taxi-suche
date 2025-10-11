@@ -843,11 +843,12 @@
       }
 
       /* Попап выбора водителя */
-      function showDriversPopup(textToSend) {
+      // было: function showDriversPopup(textToSend) {
+      function showDriversPopup(textToSend, meta = {}) {
         const activeIds = getTodayActiveIds();
         const activeDrivers = drivers.filter((d) => activeIds.has(driverId(d)));
 
-        const showing = activeDrivers.length ? activeDrivers : drivers; // если активных нет, покажем всех
+        const showing = activeDrivers.length ? activeDrivers : drivers;
         const hint = activeDrivers.length
           ? ""
           : `<div class="drivers-popup__hint">Für heute sind keine aktiven Fahrer markiert – zeige alle.</div>`;
@@ -861,7 +862,7 @@
       <div class="drivers-list">
         ${showing
           .map(
-            (d, i) =>
+            (d) =>
               `<button class="wa-driver" data-id="${driverId(d)}">${
                 d.name
               }</button>`
@@ -879,23 +880,21 @@
       </div>
     </div>
   `;
+
+        // ✅ ВАЖНО: этот блок оставить (логируем + отправляем)
         wrap.querySelectorAll(".wa-driver").forEach((btn) => {
           btn.addEventListener("click", () => {
             const id = btn.dataset.id;
             const d = drivers.find((v) => driverId(v) === id);
             const driverPhone = driverId(d);
-            const line = textToSend; // уже сформированный текст (тел+адрес)
-            // Источник (из текущего выбранного элемента)
-            const srcPhone = (q.value || "").replace(/\D+/g, "");
-            const srcAddr = ""; // если хочешь, передай сюда address из render-конекста
+            const line = textToSend;
 
-            // ⚠️ ЛОГ: фиксируем факт отправки (открытия WA)
             addLog({
               driverName: d?.name || "",
-              driverPhone,
+              driverPhone: d?.phone || "", // как хранится (+43…)
               text: line,
-              srcPhone,
-              srcAddr,
+              srcPhone: meta.srcPhone || "", // клиентский как есть
+              srcAddr: meta.srcAddr || "", // адрес
               method: "WhatsApp",
             });
 
@@ -906,22 +905,12 @@
 
         document.body.appendChild(wrap);
 
-        wrap.querySelectorAll(".wa-driver").forEach((btn) => {
-          btn.addEventListener("click", () => {
-            const id = btn.dataset.id;
-            const d = drivers.find((v) => driverId(v) === id);
-            sendToDriverPhone(driverId(d), textToSend);
-            wrap.remove();
-          });
-        });
-
         wrap
           .querySelector(".drivers-popup__close")
           .addEventListener("click", () => wrap.remove());
         wrap.addEventListener("click", (e) => {
           if (e.target === wrap) wrap.remove();
         });
-
         wrap
           .querySelector('[data-act="shift"]')
           .addEventListener("click", () => {
@@ -1173,16 +1162,26 @@
        */
       function addLog(payload) {
         const arr = getLogs();
+        const driverPhoneRaw = payload.driverPhone || ""; // как есть (+43…)
+        const srcPhoneRaw = payload.srcPhone || ""; // как есть (клиент)
+
         arr.unshift({
           ts: payload.ts || new Date().toISOString(),
           driverName: payload.driverName || "",
-          driverPhone: (payload.driverPhone || "").replace(/\D+/g, ""),
-          text: payload.text || "",
-          srcPhone: (payload.srcPhone || "").replace(/\D+/g, ""),
+
+          // Водитель — красиво с плюсом и рабочий tel:
+          driverPhoneDisplay: toE164(driverPhoneRaw) || driverPhoneRaw,
+          driverPhoneTel: telHref(driverPhoneRaw),
+
+          // Клиент — показываем как есть, но даём tel для клика:
+          srcPhoneDisplay: srcPhoneRaw,
+          srcPhoneTel: telHref(srcPhoneRaw),
+
           srcAddr: payload.srcAddr || "",
+          text: payload.text || "",
           method: payload.method || "WhatsApp",
         });
-        // опционально ограничим размер
+
         if (arr.length > 1000) arr.length = 1000;
         saveLogs(arr);
       }
@@ -1199,7 +1198,7 @@
           "Zeit",
           "Fahrer",
           "Fahrer-Nr",
-          "Quelle-Nr",
+          "Kunden-Nr",
           "Adresse",
           "Nachricht",
           "Kanal",
@@ -1210,11 +1209,11 @@
             [
               fmtAT(r.ts),
               r.driverName,
-              r.driverPhone,
-              r.srcPhone,
-              r.srcAddr,
-              r.text,
-              r.method,
+              r.driverPhoneDisplay || "",
+              r.srcPhoneDisplay || "",
+              r.srcAddr || "",
+              r.text || "",
+              r.method || "WhatsApp",
             ]
               .map(escape)
               .join(";")
@@ -1265,8 +1264,25 @@
             <tr>
               <td>${fmtAT(r.ts)}</td>
               <td>${r.driverName || ""}</td>
-              <td>${r.driverPhone || ""}</td>
-              <td>${r.srcPhone || ""}</td>
+<td>
+  ${
+    r.driverPhoneDisplay
+      ? `<a href="tel:${(r.driverPhoneTel || "").replace(/"/g, "&quot;")}">
+         ${(r.driverPhoneDisplay || "").replace(/</g, "&lt;")}
+       </a>`
+      : ""
+  }
+</td>
+<td>
+  ${
+    r.srcPhoneDisplay
+      ? `<a href="tel:${(r.srcPhoneTel || "").replace(/"/g, "&quot;")}">
+         ${(r.srcPhoneDisplay || "").replace(/</g, "&lt;")}
+       </a>`
+      : ""
+  }
+</td>
+
               <td>${r.srcAddr || ""}</td>
               <td>${(r.text || "").replace(/</g, "&lt;")}</td>
               <td>${r.method || "WhatsApp"}</td>
@@ -1303,6 +1319,27 @@
       document
         .getElementById("btnLog")
         .addEventListener("click", showLogDialog);
+
+      const digitsOnly = (s) => String(s || "").replace(/\D+/g, "");
+
+      /** Гарантируем E.164 с плюсом (если сохранили без '+') */
+      function toE164(phone) {
+        if (!phone) return "";
+        const raw = String(phone).trim();
+        if (raw.startsWith("+")) return raw; // уже E.164
+        const d = digitsOnly(raw);
+        if (!d) return "";
+        // если пользователь хранит австрийские номера без '+'
+        if (d.startsWith("43")) return "+" + d;
+        // иначе всё равно вернём +<digits> (универсально)
+        return "+" + d;
+      }
+
+      /** tel: для href — из любого ввода */
+      function telHref(phone) {
+        const e = toE164(phone);
+        return e ? e : "+" + digitsOnly(phone);
+      }
 
       load();
     </script>
