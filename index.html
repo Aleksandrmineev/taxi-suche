@@ -541,7 +541,11 @@
         update();
         setTimeout(() => q.focus(), 0);
       });
-      q.addEventListener("input", update);
+      let inputTimer;
+      q.addEventListener("input", () => {
+        clearTimeout(inputTimer);
+        inputTimer = setTimeout(() => update(), 1000); // задержка 0.5 сек
+      });
 
       // modal add new
       document.getElementById("btnAdd").addEventListener("click", () => {
