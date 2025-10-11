@@ -553,6 +553,16 @@
         color: #a8b3c5;
         padding: 12px 0;
       }
+
+      .phone-link {
+        color: inherit;
+        text-decoration: none;
+        border-bottom: 1px dotted currentColor; /* лёгкий намёк, что это ссылка */
+      }
+      .phone-link:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
     </style>
   </head>
   <body>
@@ -966,24 +976,35 @@
         listEl.innerHTML = "";
         for (const item of items) {
           const li = document.createElement("li");
-          const phone = item.phone_e164 || item.phone_raw || "";
-          const digits = normalizeDigits(q.value);
-          const phoneHTML = highlightDigits(phone, digits);
+          const phoneRaw = item.phone_e164 || item.phone_raw || "";
+          const digitsInput = normalizeDigits(q.value);
+
+          // красивое отображение с подсветкой
+          const phoneDisplayHTML = highlightDigits(phoneRaw, digitsInput);
+
+          // href для звонка (e164, с плюсом если он был)
+          const telTarget =
+            (phoneRaw.trim().startsWith("+") ? "+" : "") +
+            normalizeDigits(phoneRaw);
           const dateStr = safeDateStr(item.timestamp_iso);
           const address = item.address || "";
 
           li.innerHTML = `
       <div class="row">
-        <strong>${phoneHTML}</strong>
+        <strong>
+          <a class="phone-link" href="tel:${telTarget}" aria-label="Anrufen ${telTarget}">
+            ${phoneDisplayHTML}
+          </a>
+        </strong>
         ${dateStr ? `<small>${dateStr}</small>` : ""}
-        <div class="addr">${address}</div>
         <button class="btn-wa" title="В WhatsApp" type="button">WA</button>
       </div>
+      <div class="addr">${address}</div>
     `;
 
-          // 1) Клик по карточке — копирование в буфер
+          // клик по карточке — копирование (как было)
           li.addEventListener("click", (ev) => {
-            const line = address ? `${phone} ${address}` : `${phone}`;
+            const line = address ? `${phoneRaw} ${address}` : `${phoneRaw}`;
             copyToClipboard(line.trim());
             li.classList.add("copied");
             setTimeout(() => li.classList.remove("copied"), 1200);
@@ -991,13 +1012,18 @@
             showToastAt(x, y, "Kopiert");
           });
 
-          // 2) Кнопка WA — не копируем, открываем попап выбора водителя
+          // клик по телефону — не запускаем копирование
+          li.querySelector(".phone-link").addEventListener("click", (ev) => {
+            ev.stopPropagation(); // чтобы не сработал обработчик li
+            // дальше всё отдаём системе (звонок/софтфон)
+          });
+
+          // WA — как уже сделали ранее
           li.querySelector(".btn-wa").addEventListener("click", (ev) => {
             ev.stopPropagation();
-            const line = address ? `${phone} ${address}` : `${phone}`;
-            // Передаем и сам адрес
+            const line = address ? `${phoneRaw} ${address}` : `${phoneRaw}`;
             showDriversPopup(line.trim(), {
-              srcPhone: phone,
+              srcPhone: phoneRaw,
               srcAddr: address,
             });
           });
