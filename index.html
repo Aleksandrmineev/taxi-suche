@@ -295,12 +295,184 @@
         resize: vertical;
         min-height: 84px; /* близко к 3 строкам при 18px */
       }
+
+      /* WhatsApp кнопка в строке результата */
+      .btn-wa {
+        margin-left: auto;
+        background: #1b8d3f;
+        color: #fff;
+        border: 0;
+        border-radius: 8px;
+        padding: 4px 10px;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .btn-wa:hover {
+        filter: brightness(1.06);
+      }
+
+      /* Попап выбора водителя */
+      .drivers-popup {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: rgba(0, 0, 0, 0.45);
+        z-index: 1000;
+      }
+      .drivers-popup__inner {
+        background: #0e141c;
+        border: 1px solid #1b2738;
+        color: #e6eef7;
+        border-radius: 12px;
+        padding: 16px;
+        width: min(360px, 92vw);
+      }
+      .drivers-popup__title {
+        margin: 0 0 10px;
+        font-weight: 700;
+      }
+      .drivers-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .drivers-list .wa-driver {
+        background: #1b2738;
+        color: #e6eef7;
+        border: 0;
+        border-radius: 8px;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+      .drivers-list .wa-driver:hover {
+        filter: brightness(1.08);
+      }
+      .drivers-popup__actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 12px;
+      }
+      .drivers-popup__close {
+        background: #444;
+        color: #fff;
+        border: 0;
+        border-radius: 8px;
+        padding: 6px 10px;
+        cursor: pointer;
+      }
+
+      /* Кнопка "Смена" рядом с + Neuer Auftrag */
+      .btn-shift {
+        position: fixed;
+        top: 20px;
+        left: 25px;
+        z-index: 10;
+        background: #2b3b52;
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        font-size: 15px;
+        font-weight: 600;
+        padding: 8px 14px;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+        transition: transform 0.15s ease, filter 0.15s ease;
+      }
+      .btn-shift:hover {
+        filter: brightness(1.05);
+        transform: translateY(-2px);
+      }
+      .btn-shift:active {
+        transform: translateY(0);
+      }
+
+      /* Диалог настройки активных */
+      .shift-popup {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: rgba(0, 0, 0, 0.45);
+        z-index: 1100;
+      }
+      .shift-popup__inner {
+        background: #0e141c;
+        border: 1px solid #1b2738;
+        color: #e6eef7;
+        border-radius: 12px;
+        padding: 16px;
+        width: min(420px, 92vw);
+        max-height: 90dvh;
+        overflow: auto;
+      }
+      .shift-title {
+        margin: 0 0 10px;
+        font-weight: 700;
+      }
+      .shift-list {
+        display: grid;
+        gap: 8px;
+      }
+      .shift-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .shift-row input {
+        accent-color: #4da3ff;
+      }
+      .shift-actions {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+        margin-top: 12px;
+      }
+      .shift-btn {
+        background: #444;
+        color: #fff;
+        border: 0;
+        border-radius: 8px;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+      .shift-btn--save {
+        background: #35d07f;
+      }
+
+      /* Попап выбора водителя — добавим хинт, если активных нет */
+      .drivers-popup__hint {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .drivers-popup__footer {
+        display: flex;
+        gap: 8px;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 12px;
+      }
+      .drivers-popup__small {
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .drivers-popup__link {
+        background: #2b3b52;
+        color: #fff;
+        border: 0;
+        border-radius: 8px;
+        padding: 6px 10px;
+        cursor: pointer;
+        margin-bottom: 5px;
+      }
     </style>
   </head>
   <body>
     <main class="card">
       <h1>Suche nach Telefon</h1>
       <button class="btn-add" id="btnAdd">+ Neuer Auftrag</button>
+      <button class="btn-shift" id="btnShift">Schicht</button>
 
       <div class="search">
         <div class="input-wrap">
@@ -388,6 +560,214 @@
           localStorage.setItem(key, JSON.stringify(val));
         },
       };
+      /* === Список водителей: отредактируй номера/имена под себя === */
+      const drivers = JSON.parse(
+        localStorage.getItem("driversList") || "null"
+      ) || [
+        { name: "Aleks", phone: "4368181289405" },
+        { name: "Berti", phone: "4367763113438" },
+        { name: "Gabi", phone: "436506367662" },
+        { name: "Günter", phone: "436641660694" },
+        { name: "Michael", phone: "436503781007" },
+        { name: "Sascha", phone: "436765654250" },
+      ];
+
+      /* Сохранить кастомный список (если потом захочешь редактировать из кода) */
+      function saveDriversList(list) {
+        localStorage.setItem("driversList", JSON.stringify(list));
+      }
+      /* ===== Активные на смене (по дням) ===== */
+
+      /* Устойчивый ID водителя по номеру (только цифры) */
+      const driverId = (d) => (d.phone || "").replace(/\D+/g, "");
+
+      /* Сегодняшний ключ yyyy-mm-dd по локальному времени (Вена/Австрия) */
+      function todayKey() {
+        const d = new Date();
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+      }
+
+      /* Хранилище: { "2025-10-11": ["43664...","43665..."], ... } */
+      const ACTIVE_STORE_KEY = "activeDriversByDate";
+
+      function loadActiveMap() {
+        try {
+          return JSON.parse(localStorage.getItem(ACTIVE_STORE_KEY)) || {};
+        } catch {
+          return {};
+        }
+      }
+      function saveActiveMap(map) {
+        localStorage.setItem(ACTIVE_STORE_KEY, JSON.stringify(map));
+      }
+
+      function getTodayActiveIds() {
+        const map = loadActiveMap();
+        return new Set(map[todayKey()] || []);
+      }
+      function setTodayActiveIds(idArray) {
+        const map = loadActiveMap();
+        map[todayKey()] = Array.from(new Set(idArray));
+        saveActiveMap(map);
+      }
+
+      function isDriverActiveToday(d) {
+        const ids = getTodayActiveIds();
+        return ids.has(driverId(d));
+      }
+
+      /* Если на сегодня ничего не отмечено — умолчание: ВСЕ активны (можно поменять на пусто) */
+      function ensureTodayDefaults() {
+        const map = loadActiveMap();
+        const key = todayKey();
+        if (!map[key]) {
+          map[key] = drivers.map((d) => driverId(d)); // по умолчанию все
+          saveActiveMap(map);
+        }
+      }
+
+      /* UI: диалог выбора активных */
+      function showShiftDialog() {
+        const activeSet = getTodayActiveIds();
+        const wrap = document.createElement("div");
+        wrap.className = "shift-popup";
+        wrap.innerHTML = `
+    <div class="shift-popup__inner">
+      <p class="shift-title">Aktive Fahrer — ${todayKey()}</p>
+      <div class="shift-list">
+        ${drivers
+          .map((d) => {
+            const id = driverId(d);
+            const checked = activeSet.has(id) ? "checked" : "";
+            return `
+            <label class="shift-row">
+              <input type="checkbox" value="${id}" ${checked}>
+              <span>${d.name} — ${d.phone}</span>
+            </label>
+          `;
+          })
+          .join("")}
+      </div>
+      <div class="shift-actions">
+        <button class="shift-btn" data-act="none">Keiner</button>
+        <button class="shift-btn" data-act="all">Alle</button>
+        <button class="shift-btn shift-btn--save" data-act="save">Speichern</button>
+        <button class="shift-btn" data-act="close">Schließen</button>
+      </div>
+    </div>
+  `;
+        document.body.appendChild(wrap);
+
+        const inner = wrap.querySelector(".shift-popup__inner");
+        const checkboxes = Array.from(
+          inner.querySelectorAll('input[type="checkbox"]')
+        );
+
+        inner.addEventListener("click", (e) => {
+          const act = e.target?.dataset?.act;
+          if (!act) return;
+
+          if (act === "all") {
+            checkboxes.forEach((cb) => (cb.checked = true));
+          } else if (act === "none") {
+            checkboxes.forEach((cb) => (cb.checked = false));
+          } else if (act === "save") {
+            const ids = checkboxes
+              .filter((cb) => cb.checked)
+              .map((cb) => cb.value);
+            setTodayActiveIds(ids);
+            wrap.remove();
+          } else if (act === "close") {
+            wrap.remove();
+          }
+        });
+
+        wrap.addEventListener("click", (e) => {
+          if (e.target === wrap) wrap.remove();
+        });
+      }
+
+      /* Кнопка "Смена" */
+      document
+        .getElementById("btnShift")
+        .addEventListener("click", showShiftDialog);
+
+      /* При загрузке — обеспечить умолчание на сегодня */
+      ensureTodayDefaults();
+
+      /* Открыть WA на конкретный номер с готовым текстом */
+      function sendToDriverPhone(phoneDigits, text) {
+        const url = `https://wa.me/${phoneDigits}?text=${encodeURIComponent(
+          text
+        )}`;
+        window.open(url, "_blank", "noopener,noreferrer");
+      }
+
+      /* Попап выбора водителя */
+      function showDriversPopup(textToSend) {
+        const activeIds = getTodayActiveIds();
+        const activeDrivers = drivers.filter((d) => activeIds.has(driverId(d)));
+
+        const showing = activeDrivers.length ? activeDrivers : drivers; // если активных нет, покажем всех
+        const hint = activeDrivers.length
+          ? ""
+          : `<div class="drivers-popup__hint">Für heute sind keine aktiven Fahrer markiert – zeige alle.</div>`;
+
+        const wrap = document.createElement("div");
+        wrap.className = "drivers-popup";
+        wrap.innerHTML = `
+    <div class="drivers-popup__inner">
+      <p class="drivers-popup__title">Отправить в WhatsApp:</p>
+      ${hint}
+      <div class="drivers-list">
+        ${showing
+          .map(
+            (d, i) =>
+              `<button class="wa-driver" data-id="${driverId(d)}">${
+                d.name
+              }</button>`
+          )
+          .join("")}
+      </div>
+      <div class="drivers-popup__footer">
+        <span class="drivers-popup__small">${
+          activeDrivers.length ? "Heutige aktive Fahrer" : "Alle Fahrer"
+        }</span>
+        <div>
+          <button class="drivers-popup__link" data-act="shift">Ändern</button>
+          <button class="drivers-popup__close" type="button">Schließen</button>
+        </div>
+      </div>
+    </div>
+  `;
+        document.body.appendChild(wrap);
+
+        wrap.querySelectorAll(".wa-driver").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const id = btn.dataset.id;
+            const d = drivers.find((v) => driverId(v) === id);
+            sendToDriverPhone(driverId(d), textToSend);
+            wrap.remove();
+          });
+        });
+
+        wrap
+          .querySelector(".drivers-popup__close")
+          .addEventListener("click", () => wrap.remove());
+        wrap.addEventListener("click", (e) => {
+          if (e.target === wrap) wrap.remove();
+        });
+
+        wrap
+          .querySelector('[data-act="shift"]')
+          .addEventListener("click", () => {
+            wrap.remove();
+            showShiftDialog();
+          });
+      }
 
       function safeDateStr(iso) {
         if (!iso) return "";
@@ -441,11 +821,17 @@
           const phoneHTML = highlightDigits(phone, digits);
           const dateStr = safeDateStr(item.timestamp_iso);
           const address = item.address || "";
+
           li.innerHTML = `
-          <div class="row"><strong>${phoneHTML}</strong> ${
-            dateStr ? `<small>${dateStr}</small>` : ""
-          }</div>
-          <div class="addr">${address}</div>`;
+      <div class="row">
+        <strong>${phoneHTML}</strong>
+        ${dateStr ? `<small>${dateStr}</small>` : ""}
+        <button class="btn-wa" title="В WhatsApp" type="button">WA</button>
+      </div>
+      <div class="addr">${address}</div>
+    `;
+
+          // 1) Клик по карточке — копирование в буфер
           li.addEventListener("click", (ev) => {
             const line = address ? `${phone} ${address}` : `${phone}`;
             copyToClipboard(line.trim());
@@ -454,6 +840,14 @@
             const { x, y } = getEventXY(ev);
             showToastAt(x, y, "Kopiert");
           });
+
+          // 2) Кнопка WA — не копируем, открываем попап выбора водителя
+          li.querySelector(".btn-wa").addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            const line = address ? `${phone} ${address}` : `${phone}`;
+            showDriversPopup(line.trim());
+          });
+
           listEl.appendChild(li);
         }
       }
