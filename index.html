@@ -156,6 +156,7 @@
       }
       .addr {
         opacity: 0.95;
+        max-width: 80%;
       }
       mark {
         background: none;
@@ -720,7 +721,7 @@
         wrap.className = "drivers-popup";
         wrap.innerHTML = `
     <div class="drivers-popup__inner">
-      <p class="drivers-popup__title">Отправить в WhatsApp:</p>
+      <p class="drivers-popup__title">An WhatsApp senden:</p>
       ${hint}
       <div class="drivers-list">
         ${showing
@@ -826,9 +827,9 @@
       <div class="row">
         <strong>${phoneHTML}</strong>
         ${dateStr ? `<small>${dateStr}</small>` : ""}
+        <div class="addr">${address}</div>
         <button class="btn-wa" title="В WhatsApp" type="button">WA</button>
       </div>
-      <div class="addr">${address}</div>
     `;
 
           // 1) Клик по карточке — копирование в буфер
