@@ -577,6 +577,7 @@
       function saveDriversList(list) {
         localStorage.setItem("driversList", JSON.stringify(list));
       }
+
       /* ===== Активные на смене (по дням) ===== */
 
       /* Устойчивый ID водителя по номеру (только цифры) */
@@ -701,10 +702,46 @@
 
       /* Открыть WA на конкретный номер с готовым текстом */
       function sendToDriverPhone(phoneDigits, text) {
-        const url = `https://wa.me/${phoneDigits}?text=${encodeURIComponent(
+        const link = `https://wa.me/${phoneDigits}?text=${encodeURIComponent(
           text
         )}`;
-        window.open(url, "_blank", "noopener,noreferrer");
+
+        const ua = navigator.userAgent || "";
+        const isMobile = /Android|iPhone|iPad|iPod/i.test(ua);
+        const isIOS =
+          /iP(hone|ad|od)/.test(ua) ||
+          (ua.includes("Mac") && "ontouchend" in document);
+
+        // 📱 Мобильные: просто переход по ссылке — WhatsApp перехватывает и открывает приложение
+        if (isMobile || isIOS) {
+          window.location.href = link;
+          return;
+        }
+
+        // 💻 Десктоп: открываем временный popup и закрываем его автоматически
+        const w = window.open("about:blank", "_blank");
+
+        if (w) {
+          try {
+            w.location.replace(link);
+          } catch (e) {
+            try {
+              w.location.href = link;
+            } catch (err) {
+              console.warn("Der Link konnte nicht geöffnet werden:", err);
+            }
+          }
+
+          // Закрываем popup через 3 секунды
+          setTimeout(() => {
+            try {
+              w.close();
+            } catch (e) {}
+          }, 3000);
+        } else {
+          // fallback: если popup заблокирован, открываем напрямую
+          window.location.href = link;
+        }
       }
 
       /* Попап выбора водителя */
