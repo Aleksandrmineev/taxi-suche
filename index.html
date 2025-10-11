@@ -52,9 +52,9 @@
         border: none;
         border-radius: 10px;
 
-        font-size: 17px;
+        font-size: 15px;
         font-weight: 600;
-        padding: 10px 18px;
+        padding: 8px 14px;
         cursor: pointer;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
         transition: transform 0.15s ease, filter 0.15s ease;
@@ -467,6 +467,92 @@
         cursor: pointer;
         margin-bottom: 5px;
       }
+
+      .btn-log {
+        position: fixed;
+        top: 20px;
+        left: 110px;
+        z-index: 10;
+        background: #2b3b52;
+        color: #fff;
+        border: 0;
+        border-radius: 10px;
+        font-size: 15px;
+        font-weight: 600;
+        padding: 8px 14px;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+        transition: 0.15s;
+      }
+      .btn-log:hover {
+        filter: brightness(1.05);
+        transform: translateY(-2px);
+      }
+      .btn-log:active {
+        transform: translateY(0);
+      }
+
+      /* Диалог лога */
+      .log-popup {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: rgba(0, 0, 0, 0.45);
+        z-index: 1200;
+      }
+      .log-popup__inner {
+        background: #0e141c;
+        border: 1px solid #1b2738;
+        color: #e6eef7;
+        border-radius: 12px;
+        width: min(800px, 94vw);
+        max-height: 90dvh;
+        padding: 16px;
+        overflow: auto;
+      }
+      .log-head {
+        display: flex;
+        gap: 8px;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+      .log-actions {
+        display: flex;
+        gap: 8px;
+      }
+      .log-btn {
+        background: #2b3b52;
+        color: #fff;
+        border: 0;
+        border-radius: 8px;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+      .log-btn--danger {
+        background: #7a2b2b;
+      }
+      .log-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+      .log-table th,
+      .log-table td {
+        border-bottom: 1px solid #1b2738;
+        padding: 8px 6px;
+        vertical-align: top;
+      }
+      .log-table th {
+        text-align: left;
+        color: #a8b3c5;
+        font-weight: 600;
+      }
+      .log-empty {
+        color: #a8b3c5;
+        padding: 12px 0;
+      }
     </style>
   </head>
   <body>
@@ -474,6 +560,7 @@
       <h1>Suche nach Telefon</h1>
       <button class="btn-add" id="btnAdd">+ Neuer Auftrag</button>
       <button class="btn-shift" id="btnShift">Schicht</button>
+      <button class="btn-log" id="btnLog">Protokoll</button>
 
       <div class="search">
         <div class="input-wrap">
@@ -781,6 +868,31 @@
       </div>
     </div>
   `;
+        wrap.querySelectorAll(".wa-driver").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const id = btn.dataset.id;
+            const d = drivers.find((v) => driverId(v) === id);
+            const driverPhone = driverId(d);
+            const line = textToSend; // уже сформированный текст (тел+адрес)
+            // Источник (из текущего выбранного элемента)
+            const srcPhone = (q.value || "").replace(/\D+/g, "");
+            const srcAddr = ""; // если хочешь, передай сюда address из render-конекста
+
+            // ⚠️ ЛОГ: фиксируем факт отправки (открытия WA)
+            addLog({
+              driverName: d?.name || "",
+              driverPhone,
+              text: line,
+              srcPhone,
+              srcAddr,
+              method: "WhatsApp",
+            });
+
+            sendToDriverPhone(driverPhone, line);
+            wrap.remove();
+          });
+        });
+
         document.body.appendChild(wrap);
 
         wrap.querySelectorAll(".wa-driver").forEach((btn) => {
@@ -883,7 +995,11 @@
           li.querySelector(".btn-wa").addEventListener("click", (ev) => {
             ev.stopPropagation();
             const line = address ? `${phone} ${address}` : `${phone}`;
-            showDriversPopup(line.trim());
+            // Передаем и сам адрес
+            showDriversPopup(line.trim(), {
+              srcPhone: phone,
+              srcAddr: address,
+            });
           });
 
           listEl.appendChild(li);
@@ -954,8 +1070,6 @@
           recentEl.appendChild(b);
         }
       }
-
-      // двойной клик очищает
       q.addEventListener("click", () => {
         const now = Date.now();
         if (now - lastTap < 400) {
@@ -978,8 +1092,6 @@
         clearTimeout(inputTimer);
         inputTimer = setTimeout(() => update(), 1000); // задержка 0.5 сек
       });
-
-      // modal add new
       document.getElementById("btnAdd").addEventListener("click", () => {
         dlg.showModal();
         newPhone.value = "";
@@ -1014,6 +1126,156 @@
         update();
         showToastAt(window.innerWidth / 2, 40, "Gespeichert");
       });
+
+      /* ==== WhatsApp Send Log ==== */
+      const LOG_KEY = "waSendLog";
+
+      function getLogs() {
+        try {
+          return JSON.parse(localStorage.getItem(LOG_KEY)) || [];
+        } catch {
+          return [];
+        }
+      }
+      function saveLogs(arr) {
+        localStorage.setItem(LOG_KEY, JSON.stringify(arr));
+      }
+
+      /** Добавить запись
+       *  payload: { ts, driverName, driverPhone, text, srcPhone, srcAddr, method }
+       */
+      function addLog(payload) {
+        const arr = getLogs();
+        arr.unshift({
+          ts: payload.ts || new Date().toISOString(),
+          driverName: payload.driverName || "",
+          driverPhone: (payload.driverPhone || "").replace(/\D+/g, ""),
+          text: payload.text || "",
+          srcPhone: (payload.srcPhone || "").replace(/\D+/g, ""),
+          srcAddr: payload.srcAddr || "",
+          method: payload.method || "WhatsApp",
+        });
+        // опционально ограничим размер
+        if (arr.length > 1000) arr.length = 1000;
+        saveLogs(arr);
+      }
+
+      function fmtAT(iso) {
+        const d = new Date(iso);
+        return isNaN(d) ? "" : d.toLocaleString("de-AT");
+      }
+
+      /* Экспорт в CSV */
+      function exportLogsCSV() {
+        const rows = getLogs();
+        const header = [
+          "Zeit",
+          "Fahrer",
+          "Fahrer-Nr",
+          "Quelle-Nr",
+          "Adresse",
+          "Nachricht",
+          "Kanal",
+        ];
+        const escape = (s) => `"${String(s || "").replace(/"/g, '""')}"`;
+        const lines = [header.join(";")].concat(
+          rows.map((r) =>
+            [
+              fmtAT(r.ts),
+              r.driverName,
+              r.driverPhone,
+              r.srcPhone,
+              r.srcAddr,
+              r.text,
+              r.method,
+            ]
+              .map(escape)
+              .join(";")
+          )
+        );
+        const blob = new Blob([lines.join("\n")], {
+          type: "text/csv;charset=utf-8",
+        });
+        const a = document.createElement("a");
+        const fn = `protokoll_${new Date().toISOString().slice(0, 10)}.csv`;
+        a.href = URL.createObjectURL(blob);
+        a.download = fn;
+        document.body.appendChild(a);
+        a.click();
+        URL.revokeObjectURL(a.href);
+        a.remove();
+      }
+
+      /* UI диалог просмотра */
+      function showLogDialog() {
+        const data = getLogs();
+        const wrap = document.createElement("div");
+        wrap.className = "log-popup";
+        wrap.innerHTML = `
+    <div class="log-popup__inner">
+      <div class="log-head">
+        <strong>Protokoll der gesendeten Nachrichten</strong>
+        <div class="log-actions">
+          <button class="log-btn" data-act="export">Export CSV</button>
+          <button class="log-btn log-btn--danger" data-act="clear">Leeren</button>
+          <button class="log-btn" data-act="close">Schließen</button>
+        </div>
+      </div>
+      ${
+        data.length
+          ? `
+      <table class="log-table">
+        <thead>
+          <tr>
+            <th>Zeit</th><th>Fahrer</th><th>Fahrer-Nr</th>
+            <th>Quelle-Nr</th><th>Adresse</th><th>Nachricht</th><th>Kanal</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data
+            .map(
+              (r) => `
+            <tr>
+              <td>${fmtAT(r.ts)}</td>
+              <td>${r.driverName || ""}</td>
+              <td>${r.driverPhone || ""}</td>
+              <td>${r.srcPhone || ""}</td>
+              <td>${r.srcAddr || ""}</td>
+              <td>${(r.text || "").replace(/</g, "&lt;")}</td>
+              <td>${r.method || "WhatsApp"}</td>
+            </tr>
+          `
+            )
+            .join("")}
+        </tbody>
+      </table>`
+          : `<div class="log-empty">Keine Einträge.</div>`
+      }
+    </div>
+  `;
+        document.body.appendChild(wrap);
+
+        const inner = wrap.querySelector(".log-popup__inner");
+        inner.addEventListener("click", (e) => {
+          const act = e.target?.dataset?.act;
+          if (!act) return;
+          if (act === "export") exportLogsCSV();
+          if (act === "clear") {
+            if (confirm("Protokoll wirklich leeren?"))
+              saveLogs([]), wrap.remove();
+          }
+          if (act === "close") wrap.remove();
+        });
+
+        wrap.addEventListener("click", (e) => {
+          if (e.target === wrap) wrap.remove();
+        });
+      }
+
+      /* кнопка «Protokoll» */
+      document
+        .getElementById("btnLog")
+        .addEventListener("click", showLogDialog);
 
       load();
     </script>
