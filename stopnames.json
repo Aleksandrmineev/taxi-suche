@@ -60,7 +60,8 @@
     "sophie",
     "sophia",
     "anna",
-    "julia"
+    "julia",
+    "günter"
   ],
   "fillers": [
     "bitte",
@@ -95,14 +96,7 @@
     "u",
     "&"
   ],
-  "tokens": [
-    "und"
-  ],
-  "cut_after": [
-    ".",
-    "@"
-  ],
-  "banned_patterns": [
-    "^\\d+\\s*x$"
-  ]
+  "tokens": ["und"],
+  "cut_after": [".", "@"],
+  "banned_patterns": ["^\\d+\\s*x$"]
 }

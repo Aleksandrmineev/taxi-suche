@@ -3,11 +3,25 @@
 import argparse, re, json, datetime
 from pathlib import Path
 
-LINE_RE = re.compile(r"^\[(\d{1,2}\.\d{1,2}\.\d{2,4}),\s*(\d{1,2}:\d{2}(?::\d{2})?)\]\s([^:]+):\s(.*)$")
+LINE_RES = [
+    # [DD.MM.YY, HH:MM(:SS)] Name: Message
+    re.compile(r"^\[\s*(\d{1,2}\.\d{1,2}\.\d{2,4})\s*,\s*(\d{1,2}:\d{2}(?::\d{2})?)\s*\]\s*(.+?)\s*:\s*(.*)$"),
+    # DD.MM.YY, HH:MM(-SS) – Name: Message   (длинное тире, иногда одно дефис)
+    re.compile(r"^\s*(\d{1,2}\.\d{1,2}\.\d{2,4})\s*,?\s*(\d{1,2}:\d{2}(?::\d{2})?)\s*[–-]\s*(.+?)\s*:\s*(.*)$"),
+]
+
+NBSP_RE = re.compile(r"[\u00A0\u202F\u2007]")  # неразрывные/узкие пробелы → обычный пробел
 PHONE_RE = re.compile(r"(\+?\d[\d\s().\-]{6,}\d)")
 VEH_RE = re.compile(r"\b(\d{2,4}TX|TX\d+|TAXI\s*\d+|TAXI\d+)\b", re.IGNORECASE)
 MAP_URL_RE = re.compile(r"https?://\S+", re.IGNORECASE)
 CYRILLIC_RE = re.compile(r"[А-Яа-яЁё]")
+
+# --- новая функция нормализации ---
+def normalize_line_spaces(s: str) -> str:
+    """Заменяет неразрывные пробелы и лишние табы на обычные."""
+    s = NBSP_RE.sub(" ", s)
+    s = re.sub(r"[ \t]{2,}", " ", s)
+    return s
 
 def load_cfg(cfg_path: Path):
     cfg = {
@@ -127,16 +141,41 @@ def parse_file(in_path: Path, cfg_path: Path):
     raw = in_path.read_text(encoding="utf-8", errors="ignore").splitlines()
     # Coalesce multiline messages
     coalesced, current = [], None
-    for idx, line in enumerate(raw):
-        m = LINE_RE.match(line)
-        if m:
-            d, t, author, msg = m.groups()
+    unmatched = []  # для диагностики
+
+    for idx, raw_line in enumerate(raw):
+        line = normalize_line_spaces(raw_line.rstrip("\n\r"))
+
+        m = None
+        groups = None
+        for rx in LINE_RES:
+            mm = rx.match(line)
+            if mm:
+                m = rx
+                groups = mm.groups()
+                break
+
+        if groups:
+            d, t, author, msg = groups
             dt = parse_dt(d, t)
             current = {"idx": idx, "dt": dt, "author": author.strip(), "msg": msg.rstrip()}
             coalesced.append(current)
         else:
             if current is not None:
                 current["msg"] += "\n" + line.rstrip()
+            else:
+                # строка не распознана как начало сообщения и нет "текущего" — сохраним в unmatched
+                unmatched.append((idx, line))
+
+    # Если надо — пишем «не распознанные» в файл рядом с output
+    if unmatched:
+        try:
+            Path("unmatched_lines.txt").write_text(
+                "\n".join(f"{i}: {s}" for i, s in unmatched),
+                encoding="utf-8"
+            )
+        except Exception:
+            pass
 
     records = []
     for item in coalesced:
