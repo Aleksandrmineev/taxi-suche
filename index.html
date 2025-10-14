@@ -25,26 +25,28 @@
         margin: 0;
         background: var(--bg);
         color: var(--text);
-        font: 500 16px/1.45 system-ui;
+        font: 500 20px/1.45 system-ui;
         display: grid;
         place-items: center;
-        padding: 24px;
+        padding: 7px;
       }
       .card {
         width: min(820px, 100%);
         background: var(--card);
         border-radius: var(--radius);
-        padding: 50px 24px 24px;
+        padding: 15px 15px;
+        margin: 85px 0 0 0;
         position: relative;
       }
       h1 {
         margin: 0 0 12px;
         text-align: center;
+        font-size: 32px;
       }
       .btn-add {
         position: fixed;
         top: 20px;
-        right: 20px;
+        right: 7px;
         z-index: 10;
 
         background: var(--accent);
@@ -52,9 +54,9 @@
         border: none;
         border-radius: 10px;
 
-        font-size: 15px;
+        font-size: 20px;
         font-weight: 600;
-        padding: 8px 14px;
+        padding: 8px 20px;
         cursor: pointer;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
         transition: transform 0.15s ease, filter 0.15s ease;
@@ -81,7 +83,7 @@
       }
       #q {
         width: 100%;
-        font: 600 20px/1.2 system-ui;
+        font: 600 28px/1.2 system-ui;
         color: var(--text);
         text-align: center;
         background: #0e141c;
@@ -119,6 +121,8 @@
       }
       .muted {
         color: var(--muted);
+        margin: 0 auto;
+        font-size: 14px;
       }
       ul {
         list-style: none;
@@ -145,6 +149,10 @@
         border-color: rgba(53, 208, 127, 0.5);
         background: rgba(53, 208, 127, 0.06);
       }
+
+      a {
+        color: var(--accent);
+      }
       .row {
         display: flex;
         gap: 12px;
@@ -153,10 +161,11 @@
       }
       .row small {
         color: var(--muted);
+        font-size: 14px;
       }
       .addr {
         opacity: 0.95;
-        max-width: 80%;
+        max-width: 76%;
       }
       mark {
         background: none;
@@ -193,7 +202,7 @@
         border-radius: 6px;
         padding: 4px 10px;
         cursor: pointer;
-        font-size: 14px;
+        font-size: 20px;
       }
       .recent button:hover {
         color: var(--text);
@@ -304,10 +313,10 @@
         color: #fff;
         border: 0;
         border-radius: 8px;
-        padding: 4px 10px;
-        font-size: 13px;
+        padding: 15px 15px;
+        font-size: 16px;
         cursor: pointer;
-        max-width: 40px;
+        max-width: 60px;
       }
       .btn-wa:hover {
         filter: brightness(1.06);
@@ -368,15 +377,15 @@
       .btn-shift {
         position: fixed;
         top: 20px;
-        left: 25px;
+        left: 7px;
         z-index: 10;
         background: #2b3b52;
         color: #fff;
         border: none;
         border-radius: 10px;
-        font-size: 15px;
+        font-size: 20px;
         font-weight: 600;
-        padding: 8px 14px;
+        padding: 8px 20px;
         cursor: pointer;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
         transition: transform 0.15s ease, filter 0.15s ease;
@@ -429,6 +438,7 @@
         gap: 8px;
         justify-content: flex-end;
         margin-top: 12px;
+        flex-wrap: wrap;
       }
       .shift-btn {
         background: #444;
@@ -437,6 +447,7 @@
         border-radius: 8px;
         padding: 8px 12px;
         cursor: pointer;
+        font-size: 20px;
       }
       .shift-btn--save {
         background: #35d07f;
@@ -471,16 +482,16 @@
 
       .btn-log {
         position: fixed;
-        top: 20px;
-        left: 110px;
+        top: 70px;
+        left: 7px;
         z-index: 10;
         background: #2b3b52;
         color: #fff;
         border: 0;
         border-radius: 10px;
-        font-size: 15px;
+        font-size: 20px;
         font-weight: 600;
-        padding: 8px 14px;
+        padding: 8px 20px;
         cursor: pointer;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
         transition: 0.15s;
@@ -514,6 +525,7 @@
       }
       .log-head {
         display: flex;
+        flex-wrap: wrap;
         gap: 8px;
         justify-content: space-between;
         align-items: center;
@@ -530,6 +542,7 @@
         border-radius: 8px;
         padding: 8px 12px;
         cursor: pointer;
+        font-size: 18px;
       }
       .log-btn--danger {
         background: #7a2b2b;
@@ -537,7 +550,7 @@
       .log-table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 14px;
+        font-size: 18px;
       }
       .log-table th,
       .log-table td {
@@ -1106,7 +1119,7 @@
       let inputTimer;
       q.addEventListener("input", () => {
         clearTimeout(inputTimer);
-        inputTimer = setTimeout(() => update(), 1000); // задержка 0.5 сек
+        inputTimer = setTimeout(() => update(), 1000);
       });
       document.getElementById("btnAdd").addEventListener("click", () => {
         dlg.showModal();
