@@ -690,3 +690,25 @@ function telHref(phone) {
 }
 
 load();
+
+(function () {
+  // тема уже применена бутскриптом в <head>; здесь только кнопка
+  window.addEventListener("DOMContentLoaded", () => {
+    const btn = document.getElementById("themeToggle");
+    if (!btn) return;
+
+    const setLabel = (t) =>
+      (btn.textContent = t === "dark" ? "☀️ Hell" : "🌙 Dunkel");
+
+    // синхронизируем надпись с текущей темой
+    setLabel(document.documentElement.getAttribute("data-theme") || "dark");
+
+    btn.addEventListener("click", () => {
+      const cur = document.documentElement.getAttribute("data-theme") || "dark";
+      const next = cur === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", next);
+      localStorage.setItem("theme", next);
+      setLabel(next);
+    });
+  });
+})();
