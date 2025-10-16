@@ -17,6 +17,7 @@ body {
 }
 
 .card {
+  position: relative;
   width: min(820px, 100%);
   background: var(--card);
   border-radius: var(--radius);
@@ -32,11 +33,29 @@ h1 {
   font-size: 32px;
 }
 
+.btn-cancel {
+  background: var(--btn-sec-bg);
+  color: var(--btn-sec-text);
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 20px;
+}
+.btn-save {
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 20px;
+  background: var(--green);
+  color: var(--btn-prim-text, #fff);
+}
 /* Кнопка «новый заказ» — теням даём токен; текст через фолбэк */
 .btn-add {
-  position: fixed;
-  top: 20px;
-  right: 7px;
+  position: absolute;
+  top: -50px;
+  right: 0px;
   z-index: 10;
   background: var(--accent);
   color: var(--btn-prim-text, #fff);
@@ -517,24 +536,52 @@ dialog textarea {
 }
 
 .footer__dev {
-  margin-top: 10px;
+  padding: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
   gap: 16px;
 }
+
 .footer__dev a {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   color: var(--footer-text);
-  font-size: 14px;
+  font-size: 16px;
   text-decoration: none;
-  transition: opacity 0.25s ease;
+  transition: color 0.25s ease, opacity 0.25s ease;
 }
+
+.footer__dev a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 100%;
+  height: 1.5px;
+  background-color: currentColor;
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0.8;
+}
+
 .footer__dev a:hover {
-  opacity: 0.7;
+  opacity: 1;
 }
+
+.footer__dev a:hover::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
 .footer__dev svg {
   flex-shrink: 0;
+}
+
+#dlg #newPhone {
+  display: none;
 }

@@ -199,6 +199,24 @@ function sendToDriverPhone(phoneDigits, text) {
   }
 }
 
+// Универсальный парсер: найдёт номер в любой части строки, остальное — адрес
+function parseLineToPhoneAddr(raw) {
+  const line = String(raw || "").trim();
+  if (!line) return { phone: "", address: "" };
+
+  // первый «телефоноподобный» фрагмент: + или цифра, затем цифры/пробелы/()/-//
+  const phoneMatch = line.match(/(\+?\d[\d\s()\/-]{4,})/);
+  if (phoneMatch) {
+    const phone = phoneMatch[1].trim().replace(/\s+/g, " ");
+    const address = line
+      .replace(phoneMatch[0], "")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+    return { phone, address };
+  }
+  return { phone: "", address: line };
+}
+
 /* Попап выбора водителя */
 // было: function showDriversPopup(textToSend) {
 function showDriversPopup(textToSend, meta = {}) {
@@ -461,30 +479,36 @@ q.addEventListener("input", () => {
 });
 document.getElementById("btnAdd").addEventListener("click", () => {
   dlg.showModal();
-  newPhone.value = "";
+  // используем newAddr как единое поле (номер+адрес)
+  newPhone.value = ""; // можно скрыть через CSS, но очищаем на всякий
   newAddr.value = "";
-  newPhone.focus();
+  newAddr.focus();
 });
+
 document
   .getElementById("cancelAdd")
   .addEventListener("click", () => dlg.close());
+
 document.getElementById("saveAdd").addEventListener("click", () => {
-  const ph = newPhone.value.trim(),
-    addr = newAddr.value.trim();
-  if (!ph || !addr) {
+  // читаем ВСЁ из newAddr (одно поле), номер ищем внутри
+  const { phone: ph, address: addr } = parseLineToPhoneAddr(newAddr.value);
+
+  if (!ph && !addr) {
     alert("Telefon und Adresse eingeben");
     return;
   }
+
   const now = new Date();
   const rec = {
     timestamp_iso: now.toISOString(),
     author: "user",
-    phone_raw: ph,
-    phone_digits: normalizeDigits(ph),
-    phone_e164: ph,
-    address: addr,
+    phone_raw: ph || "",
+    phone_digits: normalizeDigits(ph || ""),
+    phone_e164: toE164(ph) || ph || "",
+    address: addr || "",
     source_line: -1,
   };
+
   const all = ls.get("customOrders", []);
   all.push(rec);
   ls.set("customOrders", all);
